@@ -1,0 +1,54 @@
+name: Refresh Release Channel
+
+on:
+  repository_dispatch:
+    types: [refresh-channel-release]
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: Versioned release tag to mirror
+        required: true
+        type: string
+      channel:
+        description: Release channel
+        required: false
+        default: alpha
+        type: choice
+        options: [alpha]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-release-channel-${{ github.event.client_payload.channel || github.event.inputs.channel || 'alpha' }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SOURCE_TAG: ${{ github.event.client_payload.source_tag || github.event.inputs.source_tag }}
+    steps:
+      - name: Refresh rolling alpha release
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY}"
+          source_tag="${SOURCE_TAG}"
+          [[ -n "$source_tag" && "$source_tag" != "alpha-latest" ]]
+
+          work_dir="$(mktemp -d)"
+          trap 'rm -rf "$work_dir"' EXIT
+          mkdir -p "$work_dir/assets"
+
+          gh release view "$source_tag" --repo "$repo" --json body --jq .body > "$work_dir/notes.md"
+          gh release download "$source_tag" --repo "$repo" --dir "$work_dir/assets"
+          mapfile -d '' assets < <(find "$work_dir/assets" -type f -print0 | sort -z)
+          (( ${#assets[@]} > 0 ))
+
+          target_sha="$(gh api "repos/$repo/git/ref/tags/$source_tag" --jq .object.sha)"
+          gh release delete alpha-latest --repo "$repo" --cleanup-tag --yes >/dev/null 2>&1 || true
+          gh release create alpha-latest --repo "$repo" --target "$target_sha" \
+            --title "Ledger Scout latest alpha" --notes-file "$work_dir/notes.md" \
+            --prerelease --latest=false "${assets[@]}"
