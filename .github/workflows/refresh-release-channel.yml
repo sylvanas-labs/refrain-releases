@@ -53,5 +53,5 @@ jobs:
           target_sha="$(gh api "repos/$repo/git/ref/tags/$source_tag" --jq .object.sha)"
           gh release delete alpha-latest --repo "$repo" --cleanup-tag --yes >/dev/null 2>&1 || true
           gh release create alpha-latest --repo "$repo" --target "$target_sha" \
-            --title "Ledger Scout latest alpha" --notes-file "$work_dir/notes.md" \
+            --title "Refrain latest alpha" --notes-file "$work_dir/notes.md" \
             --prerelease --latest=false "${assets[@]}"

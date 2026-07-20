@@ -1,6 +1,6 @@
-# Ledger Scout — Releases
+# Refrain — Releases
 
-This public repository hosts release artifacts for **Ledger Scout**, a privacy-first household finance companion for Windows and Android.
+This public repository hosts release artifacts for **Refrain**, a privacy-first household finance companion for Windows and Android.
 
 > Product source: private. This repository contains public downloads and installation documentation only.
 
