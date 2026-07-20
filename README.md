@@ -10,8 +10,8 @@ Use the [`alpha-latest`](../../releases/tag/alpha-latest) release for the newest
 
 | Platform | File | Notes |
 |---|---|---|
-| Android | `Ledger-Scout-Android-*.apk` | Sideload on Android |
-| Windows | `Ledger-Scout-Setup-*.exe` | Windows installer |
+| Android | `Refrain-Android-*.apk` | Sideload on Android |
+| Windows | `Refrain-Setup-*.exe` | Windows installer |
 
 Alpha builds may contain incomplete features. Do not treat them as stable releases.
 
