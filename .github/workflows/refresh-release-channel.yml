@@ -113,7 +113,13 @@ jobs:
           max_download_attempts=3
           attempt=1
           while true; do
-            gh release download "$source_tag" --repo "$repo" --dir "$assets_dir" --clobber
+            # `|| true`: under set -e, an outright download failure (not just
+            # an incomplete one) would otherwise kill the script here before
+            # the retry loop below ever runs -- exactly the same asset-
+            # visibility race, just surfacing as a failed call instead of a
+            # short one. Treat it the same as "downloaded nothing this
+            # attempt" and let the diff/retry logic below handle it.
+            gh release download "$source_tag" --repo "$repo" --dir "$assets_dir" --clobber || true
             find "$assets_dir" -maxdepth 1 -type f -print0 \
               | xargs -0 -n1 basename \
               | sort > "$downloaded_assets_file"
