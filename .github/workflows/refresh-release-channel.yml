@@ -101,8 +101,15 @@ jobs:
           # download (4 of 5 files) passed silently. Compare against the
           # source release's own asset list (already in $release_json) and
           # retry with backoff before giving up loudly.
+          # `tr -d '\r'`: this runner's jq.exe (Windows chocolatey build)
+          # writes CRLF line endings even with -r, while find/xargs/basename
+          # below produce LF-only -- diff -q then reported every asset as
+          # mismatched on EVERY run regardless of what actually downloaded,
+          # which is what actually broke both retry attempts today, not a
+          # real visibility gap. Strip \r on both sides so the comparison is
+          # actually comparing names, not line-ending noise.
           expected_assets_file="$work_dir/expected-assets.txt"
-          jq -r '.assets[].name' "$release_json" | sort > "$expected_assets_file"
+          jq -r '.assets[].name' "$release_json" | tr -d '\r' | sort > "$expected_assets_file"
           expected_count="$(wc -l < "$expected_assets_file")"
           if [[ "$expected_count" -eq 0 ]]; then
             echo "Source release $source_tag has no assets; refusing to publish an empty channel release."
@@ -122,6 +129,7 @@ jobs:
             gh release download "$source_tag" --repo "$repo" --dir "$assets_dir" --clobber || true
             find "$assets_dir" -maxdepth 1 -type f -print0 \
               | xargs -0 -n1 basename \
+              | tr -d '\r' \
               | sort > "$downloaded_assets_file"
 
             if diff -q "$expected_assets_file" "$downloaded_assets_file" >/dev/null; then
@@ -180,8 +188,12 @@ jobs:
           # end up incomplete, as a hard failure instead of a silent one.
           created_json="$work_dir/created-release.json"
           gh api "repos/$repo/releases/tags/$channel_tag" > "$created_json"
-          created_draft="$(jq -r '.draft' "$created_json")"
-          created_asset_count="$(jq '.assets | length' "$created_json")"
+          # tr -d '\r': command substitution only strips trailing \n, not an
+          # embedded \r right before it (same jq.exe quirk as above) -- left
+          # unstripped, created_draft would literally be "false\r", so the
+          # != "false" check below would misfire on every run.
+          created_draft="$(jq -r '.draft' "$created_json" | tr -d '\r')"
+          created_asset_count="$(jq '.assets | length' "$created_json" | tr -d '\r')"
           if [[ "$created_draft" != "false" || "$created_asset_count" -ne "$expected_count" ]]; then
             echo "Published channel release $channel_tag failed verification: draft=$created_draft, assets=$created_asset_count/$expected_count expected."
             exit 1
